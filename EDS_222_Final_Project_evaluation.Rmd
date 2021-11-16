@@ -31,10 +31,31 @@ library(paletteer)
 library(ggExtra)
 library(ggrepel)
 library(ggbeeswarm)
+library(sf)
+library(urbnmapr)
 library(tidycensus)
+#library(tigris)
 ```
 
 # Read in EQI data and select columns of interest
+```{r}
+api_txt <- "~/Documents/UCSB_Environmental_Data_Science/EDS_222_Statistics_for_Environmental_Data_Science/Final_Project_Notes/census_key.txt"
+
+api_key <- readLines(api_txt)
+census_api_key(api_key)
+```
+```{r}
+vt <- get_acs(geography = "county", 
+              variables = c(medincome = "B19013_001"), 
+              state = "VT", 
+              year = 2018)
+vt
+```
+
+
+```{r}
+fips_codes <- data.frame(fips_codes)
+```
 
 ```{r}
 eqi <- read_csv(here("data", "eqi_data", "Eqi_results_2013JULY22.csv")) %>% 
@@ -57,7 +78,7 @@ header <- c("county_name", "april_1_2000", "2000", "2001", "2002", "2003", "2004
 codes <- c("01", "02", "04", "05", "06", "08", "09", "10", "11", "12", "13", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "44", "45", "46", "47", "48", "49", "50", "51", "53", "54", "55", "56")
 ```
 
-```{r}
+```{r, message=FALSE}
 source(here("src", "state_pop_fun.R"))
 county_pop = data.frame()
 
@@ -73,4 +94,46 @@ county_pop <- rbind(county_pop, state_df)
 eqi_pop <- left_join(county_pop, eqi, by = c("county_name", "state_code")) %>% 
   relocate(c(stfips, state_code, county_code, state, state_name), .before = county_name)
 ```
+# Summary Statistics and Graphs
+
+# Statistical Evaluation
+## Diffeent means test
+**null_hypothesis:** There is no difference in mean EQI for counties with positive and negative population growth.
+$$H_{0}: \mu_{NorthCentral} - \mu_{South} = 0$$
+**alternative hypothesis:** There is a difference in EQI for counties with positive and negative population growth.
+$$H_{A}: \mu_{NorthCentral} - \mu_{South} \neq 0$$
+
+The standard error for a difference in means is defined as: $SE = \sqrt{\frac{s_1^2}{n_1} + \frac{s^2_2}{n_2}}$ and the test-statistic for a hypothesis test is $z = \frac{\text{point estimate - null}}{SE}$
+
+# Linear Model
+Build a model for EQI vs population change and a model with coefficients for each EQI category to identify the category most correlated with population change
+
+# Map
+```{r}
+county_shp <- st_read("data/gz_2010_us_050_00_20m/gz_2010_us_050_00_20m.shp")
+```
+project
+filter only 50 states + DC
+try to find a shapefile that makes alaska and hawaii look good
+
+```{r}
+# https://urbaninstitute.github.io/urbnmapr/
+counties_sf <- get_urbn_map("counties", sf = TRUE)
+
+counties_sf %>% 
+  ggplot(aes()) +
+  geom_sf(fill = "grey", color = "#ffffff")
+```
+```{r}
+
+```
+
+
+```{r}
+county_laea %>% 
+  ggplot(aes()) +
+  geom_sf(fill = "grey", color = "#ffffff")
+```
+
+
 
