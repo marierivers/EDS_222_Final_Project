@@ -99,11 +99,59 @@ eqi_pop <- left_join(county_pop, eqi, by = c("county_name", "state_code")) %>%
 # Statistical Evaluation
 ## Diffeent means test
 **null_hypothesis:** There is no difference in mean EQI for counties with positive and negative population growth.
-$$H_{0}: \mu_{NorthCentral} - \mu_{South} = 0$$
+$$H_{0}: \mu_{popGrowthl} - \mu_{popDecline} = 0$$
 **alternative hypothesis:** There is a difference in EQI for counties with positive and negative population growth.
-$$H_{A}: \mu_{NorthCentral} - \mu_{South} \neq 0$$
+$$H_{A}: \mu_{posPopChange} - \mu_{negPopChange} \neq 0$$
 
 The standard error for a difference in means is defined as: $SE = \sqrt{\frac{s_1^2}{n_1} + \frac{s^2_2}{n_2}}$ and the test-statistic for a hypothesis test is $z = \frac{\text{point estimate - null}}{SE}$
+
+```{r}
+# mean values
+mu_pos_pop_change <-
+
+mu_neg_pop_change <-
+
+# standard deviations  
+sd_pos_pop_change <-
+
+sd_neg_pop_change <-
+
+# count of observations 
+n_pos_pop_change <-
+
+n_neg_pop_change <-
+```
+
+```{r}
+# calculate point estimate
+point_est <- as.numeric(nu_pos_pop_change - mu_neg_pop_change)
+print(point_est)
+```
+
+To calculate a standard error for a difference in means:
+
+n = number of observations for each group
+s = standard deviation for each group
+$$SE = \sqrt{\frac{s_1^2}{n_1} + \frac{s^2_2}{n_2}}$$
+```{r}
+# calculate standard error
+SE <- sqrt( (sd_pos_pop_change^2 / n_pos_pop_change) + (sd_neg_pop_change^2 / n_neg_pop_change) )
+```
+
+The definition of the z-score for hypothesis testing: 
+
+$$z_{score}=\frac{\text { point estimate }-\text { null value }}{S E}$$
+```{r}
+z_score <- (point_est - 0) / SE
+```
+Calculated p-value: the probability of getting a point estimate at least as extreme as calculates above if the null hypothesis were true: 
+$$p \text { - value }=\operatorname{Pr}(Z<-|z| \text { or } Z>|z|)=2 * \operatorname{Pr}(Z>|z|)$$
+```{r}
+# Make use of the function `pnorm()` to access the normal distribution. Note: `pnorm()` gives you the probability mass below a certain cutoff in a probability distribution with a mean and standard deviation you can control. Use `lower.tail=FALSE` to get the mass above a given cutoff.
+p_val = 2 * pnorm(point_est, mean = 0, sd = SE, lower.tail=FALSE)
+print(p_val)
+```
+
 
 # Linear Model
 Build a model for EQI vs population change and a model with coefficients for each EQI category to identify the category most correlated with population change
