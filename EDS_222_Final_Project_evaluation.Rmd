@@ -135,7 +135,7 @@ s = standard deviation for each group
 $$SE = \sqrt{\frac{s_1^2}{n_1} + \frac{s^2_2}{n_2}}$$
 ```{r}
 # calculate standard error
-SE <- sqrt( (sd_pos_pop_change^2 / n_pos_pop_change) + (sd_neg_pop_change^2 / n_neg_pop_change) )
+SE <- as.numeric(sqrt( (sd_pos_pop_change^2 / n_pos_pop_change) + (sd_neg_pop_change^2 / n_neg_pop_change) ))
 ```
 
 The definition of the z-score for hypothesis testing: 
@@ -151,6 +151,45 @@ $$p \text { - value }=\operatorname{Pr}(Z<-|z| \text { or } Z>|z|)=2 * \operator
 p_val = 2 * pnorm(point_est, mean = 0, sd = SE, lower.tail=FALSE)
 print(p_val)
 ```
+
+xxx...Since $p-value = 0.018 < 0.05$ we reject the null that there is no difference in the birth weight of babies born to smoking versus non-smoking mothers. We can say there is a statistically significant difference (at the 5% significance level) in baby birth weight across smoking and non-smoking mothers.
+
+# Using `t.test()` to implement a hypothesis test in `R`
+
+Let's repeat the above steps using the canned function in `R` that
+allows you to perform hypothesis tests for comparing one or two means.
+
+Again, we want to know if there is a statistically significant
+difference in baby birth weight across smoking and non-smoking mothers.
+
+First, take a look at `t.test()` documentation to see how the function
+works.
+
+```{r}
+?t.test
+```
+
+"Performs one and two sample t-tests on vectors of data" = Performs t
+tests on 1 mean and 2 means
+
+We can implement our t-test in multiple ways using `t.test()`. First,
+let's use the `formula` object, as I think this is the nicest approach.
+To use this method, we first enter the variable we are interested in
+evaluating means of (i.e., `weight`), then use a tilde `~` like in
+regression analysis, followed by the variable indicating the groups for
+which we are testing for differences in means (`habit`).
+
+```{r}
+t.test(weight ~ habit, data = ncbirths_complete_habit)
+```
+
+Note that we obtain nearly the same p-value and test-statistic (shown as
+`t`) as we did above, although it's slightly different as this is using
+the t-distribution and we used the normal.[^2]
+
+[^2]: By the time $n=1000$, the t-distribution and normal are very very
+    similar.
+
 
 
 # Linear Model
