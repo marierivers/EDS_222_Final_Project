@@ -44,6 +44,7 @@ api_txt <- "~/Documents/UCSB_Environmental_Data_Science/EDS_222_Statistics_for_E
 api_key <- readLines(api_txt)
 census_api_key(api_key)
 ```
+
 ```{r}
 vt <- get_acs(geography = "county", 
               variables = c(medincome = "B19013_001"), 
@@ -57,7 +58,7 @@ vt
 fips_codes <- data.frame(fips_codes)
 ```
 
-```{r}
+```{r, results=FALSE, echo=FALSE, message=FALSE}
 eqi <- read_csv(here("data", "eqi_data", "Eqi_results_2013JULY22.csv")) %>% 
   select(stfips, county_name, state, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, sociod_EQI_22July2013, built_EQI_22July2013, EQI_22July2013) %>% 
   mutate(state_code = substr(stfips, 1, 2)) %>% 
@@ -90,11 +91,57 @@ county_pop <- rbind(county_pop, state_df)
 ```
 
 ```{r}
+county_pop <- county_pop %>% 
+  mutate(pop_change_pct = ((july_1_2010 - X2006) / X2006) * 100) %>% 
+  mutate(pop_change_text = case_when(
+    pop_change_pct > 0 ~ "growth",
+    pop_change_pct <= 0 ~ "decline"))
+```
+
+
+```{r}
 # join eqi and population data
 eqi_pop <- left_join(county_pop, eqi, by = c("county_name", "state_code")) %>% 
-  relocate(c(stfips, state_code, county_code, state, state_name), .before = county_name)
+  relocate(c(stfips, state_code, county_code, state, state_name), .before = county_name) %>% 
+  select(-april_1_2000, -X2000, -X2001, -X2002, -X2003, -X2004, -X2005, -april_1_2010)
 ```
 # Summary Statistics and Graphs
+
+```{r}
+eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = EQI_22July2013, y = pop_change_pct)) + 
+  geom_point()
+eqi_pop_change_plot
+```
+```{r}
+air_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = air_EQI_22July2013, y = pop_change_pct)) + 
+  geom_point()
+air_eqi_pop_change_plot
+```
+```{r}
+water_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = water_EQI_22July2013, y = pop_change_pct)) + 
+  geom_point()
+water_eqi_pop_change_plot
+```
+```{r}
+land_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = land_EQI_22July2013, y = pop_change_pct)) + 
+  geom_point()
+land_eqi_pop_change_plot
+```
+```{r}
+sociod_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = sociod_EQI_22July2013, y = pop_change_pct)) + 
+  geom_point()
+sociod_eqi_pop_change_plot
+```
+```{r}
+built_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = built_EQI_22July2013, y = pop_change_pct)) + 
+  geom_point()
+built_eqi_pop_change_plot
+```
+
+```{r}
+all_eqi_plot <- eqi_pop_change_plot / (air_eqi_pop_change_plot + water_eqi_pop_change_plot + land_eqi_pop_change_plot + sociod_eqi_pop_change_plot + built_eqi_pop_change_plot)
+all_eqi_plot
+```
 
 # Statistical Evaluation
 ## Diffeent means test
@@ -104,23 +151,49 @@ $$H_{0}: \mu_{popGrowthl} - \mu_{popDecline} = 0$$
 $$H_{A}: \mu_{posPopChange} - \mu_{negPopChange} \neq 0$$
 
 The standard error for a difference in means is defined as: $SE = \sqrt{\frac{s_1^2}{n_1} + \frac{s^2_2}{n_2}}$ and the test-statistic for a hypothesis test is $z = \frac{\text{point estimate - null}}{SE}$
+```{r}
+eqi_pop %>% 
+  group_by(pop_change_text) %>% 
+  summarise(mean_eqi = round(mean(EQI_22July2013, na.rm = TRUE),2),
+            sd_eqi = round(sd(EQI_22July2013, na.rm = TRUE), 2),
+            var_eqi = round(var(EQI_22July2013, na.rm = TRUE), 2),
+            count = n()) %>% 
+  kable(col.names = c("Population Change", "Mean EQI", "Standard Deviation EQI", "Variance EQI", "Number of Counties"), caption = "Mean, standard deviation, and variance for counties with positive and negative population change between 2006 and 2010") %>%
+  kable_paper(full_width = FALSE)
+```
 
 ```{r}
 # mean values
-mu_pos_pop_change <-
+mu_eqi_pos_pop_change <- eqi_pop %>% 
+  filter(pop_change_pct > 0) %>% 
+  summarise(mean_eqi = mean(EQI_22July2013, na.rm = TRUE))
 
-mu_neg_pop_change <-
+mu_eqi_neg_pop_change <- eqi_pop %>% 
+  filter(pop_change_pct <= 0) %>% 
+  summarise(mean_eqi = mean(EQI_22July2013, na.rm = TRUE))
 
 # standard deviations  
-sd_pos_pop_change <-
+sd_eqi_pos_pop_change <- eqi_pop %>% 
+  filter(pop_change_pct > 0) %>% 
+  summarise(sd_eqi = sd(EQI_22July2013, na.rm = TRUE))
 
-sd_neg_pop_change <-
+sd_eqi_neg_pop_change <- eqi_pop %>% 
+  filter(pop_change_pct <= 0) %>% 
+  summarise(sd_eqi = sd(EQI_22July2013, na.rm = TRUE))
 
 # count of observations 
-n_pos_pop_change <-
+n_pos_pop_change <- eqi_pop %>% 
+  filter(pop_change_pct > 0) %>% 
+  summarise(count = n())
 
-n_neg_pop_change <-
+n_neg_pop_change <- eqi_pop %>% 
+  filter(pop_change_pct <= 0) %>% 
+  summarise(count = n())
 ```
+```{r}
+print(sd_eqi_neg_pop_change)
+```
+
 
 ```{r}
 # calculate point estimate
@@ -215,12 +288,22 @@ counties_sf %>%
 
 ```
 
+```{r}
+county_laea <- county_laea %>% 
+  rename(stfips = GEOID) %>% 
+  left_join(eqi_pop)
+```
+
 
 ```{r}
 county_laea %>% 
   ggplot(aes()) +
-  geom_sf(fill = "grey", color = "#ffffff")
+  geom_sf(aes(fill = EQI_22July2013))
 ```
-
+```{r}
+county_laea %>% 
+  ggplot(aes()) +
+  geom_sf(aes(fill = pop_change_pct))
+```
 
 
