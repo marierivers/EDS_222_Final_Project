@@ -46,32 +46,26 @@ census_api_key(api_key)
 ```
 
 ```{r}
-# vt <- get_acs(geography = "county",
-#               variables = c(medincome = "B19013_001"),
-#               state = "VT",
-#               year = 2018)
-# vt
-```
-
-
-```{r}
-fips_codes <- data.frame(fips_codes)
+fips_codes <- data.frame(fips_codes) %>%
+  rename(county_name = county) %>%
+  mutate(stfips = paste0(state_code, county_code))
 ```
 
 ```{r, results=FALSE, echo=FALSE, message=FALSE}
 eqi <- read_csv(here("data", "eqi_data", "Eqi_results_2013JULY22.csv")) %>% 
-  select(stfips, county_name, state, cat_rucc, EQI_22July2013, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, built_EQI_22July2013, sociod_EQI_22July2013) %>% 
-  mutate(state_code = substr(stfips, 1, 2)) %>% 
-  mutate(county_code = substr(stfips, 3, 5)) %>% 
-  relocate(state_code, .after = stfips) %>% 
-  relocate(county_code, .after = state_code) %>% 
-  left_join(fips_codes, by = c("state_code", "county_code")) %>% 
-  mutate(county_name = county) %>% 
-  mutate(state = state.x) %>% 
+  select(stfips, county_name, state, cat_rucc, EQI_22July2013, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, built_EQI_22July2013, sociod_EQI_22July2013) %>%
+  mutate(county_code = str_sub(stfips, -3)) %>% 
+  mutate(rucc_text = case_when(
+    cat_rucc %in% c(1, 2) ~ "metropolitan or urban",
+    cat_rucc %in% c(3, 4) ~ "less urban or thinly populated")) %>%
+  left_join(fips_codes, by = c("state", "county_code")) %>% 
   mutate(cat_rucc = as.factor(cat_rucc)) %>%
-  select(stfips, state_code, county_code, county_name, state, state_name, cat_rucc, EQI_22July2013, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, built_EQI_22July2013, sociod_EQI_22July2013)
+  select(stfips.y, state_code, county_code, state_name, state, county_name.x, county_name.y, cat_rucc, rucc_text, EQI_22July2013, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, built_EQI_22July2013, sociod_EQI_22July2013) %>%
+  rename(stfips = stfips.y)
 ```
-
+  mutate(pop_change_text = case_when(
+    pop_change_pct > 0 ~ "positive",
+    pop_change_pct <= 0 ~ "negative"))
 # Read in county level population data
 ```{r}
 header <- c("county_name", "april_1_2000", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "april_1_2010", "july_1_2010")
@@ -92,6 +86,7 @@ county_pop <- rbind(county_pop, state_df)
 
 ```{r}
 county_pop <- county_pop %>% 
+  left_join(fips_codes, by = c("county_name", "state_code")) %>%
   mutate(pop_change_pct = ((july_1_2010 - X2006) / X2006) * 100) %>% 
   mutate(pop_change_text = case_when(
     pop_change_pct > 0 ~ "positive",
@@ -100,24 +95,20 @@ county_pop <- county_pop %>%
 
 ```{r}
 county_pop_histogram <- ggplot(data = county_pop, aes(x = pop_change_pct)) +
-  geom_histogram(bins = 200)
+  geom_histogram(fill = "red", bins = 200)
 county_pop_histogram
 ```
 
 # Join eqi and population data
 ```{r}
-eqi_pop <- left_join(county_pop, eqi, by = c("county_name", "state_code")) %>% 
-  relocate(c(stfips, state_code, county_code, state, state_name), .before = county_name) %>% 
-  select(-april_1_2000, -X2000, -X2001, -X2002, -X2003, -X2004, -X2005, -april_1_2010)
+eqi_pop <- left_join(eqi, county_pop, by = c("stfips")) %>% 
+  #relocate(c(stfips, state_code, county_code, state, state_name), .before = county_name) %>% 
+  select(-april_1_2000, -X2000, -X2001, -X2002, -X2003, -X2004, -X2005, -april_1_2010) %>%
+  filter(!X2006 == "null")
 ```
 
 ```{r}
-eqi_pop2 <- left_join(eqi, county_pop, by = c("county_name", "state_code")) %>% 
-  relocate(c(stfips, state_code, county_code, state, state_name), .before = county_name) %>% 
-  select(-april_1_2000, -X2000, -X2001, -X2002, -X2003, -X2004, -X2005, -april_1_2010)
-```
-
-```{r}
+# xxx
 write_csv(eqi_pop, here("data", "eqi_pop.csv"))
 ```
 
@@ -134,13 +125,23 @@ eqi_pop_change_plot
 
 ```{r}
 eqi_pop_rucc_scatter <- ggplot(data = eqi_pop, aes(x = EQI_22July2013, y = pop_change_pct)) + 
-  geom_point(aes(color = cat_rucc)) +
+  geom_point(aes(color = cat_rucc), size = .75) +
   theme(legend.position = "bottom") +
   labs(title = "County percent population change vs. EQI, 2006-2010", x = "EQI", y = " % population change", color = "RUCC:")
 
 eqi_pop_rucc_plot <- ggMarginal(eqi_pop_rucc_scatter, type = "boxplot", groupColour = TRUE)
 eqi_pop_rucc_plot
 ```
+```{r}
+eqi_pop_rucc_scatter2 <- ggplot(data = eqi_pop, aes(x = EQI_22July2013, y = pop_change_pct)) + 
+  geom_point(aes(color = rucc_text), size = .75) +
+  theme(legend.position = "bottom") +
+  labs(title = "County percent population change vs. EQI, 2006-2010", x = "EQI", y = " % population change", color = "RUCC:")
+
+eqi_pop_rucc_plot2 <- ggMarginal(eqi_pop_rucc_scatter2, type = "boxplot", groupColour = TRUE)
+eqi_pop_rucc_plot2
+```
+
 ```{r}
 county_pop_rucc_histogram <- ggplot(data = eqi_pop, aes(x = pop_change_pct)) +
   geom_histogram(aes(fill = cat_rucc), position = "dodge", bins = 50)
@@ -153,36 +154,40 @@ pop_boxplot <- ggplot(data = eqi_pop, aes(x = cat_rucc, y = pop_change_pct)) +
   coord_flip()
 pop_boxplot
 ```
+```{r}
+pop_boxplot2 <- ggplot(data = eqi_pop, aes(x = pop_change_pct)) +
+  geom_boxplot() +
+  labs(title = "U.S. county level population change, 2006-2010", x = "percent population change") +
+  theme(axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+pop_boxplot2
+```
 
 
 ```{r}
 air_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = air_EQI_22July2013, y = pop_change_pct)) + 
   geom_point()
-air_eqi_pop_change_plot
 ```
 
 ```{r}
 water_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = water_EQI_22July2013, y = pop_change_pct)) + 
   geom_point()
-water_eqi_pop_change_plot
 ```
 
 ```{r}
 land_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = land_EQI_22July2013, y = pop_change_pct)) + 
   geom_point()
-land_eqi_pop_change_plot
 ```
 
 ```{r}
 sociod_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = sociod_EQI_22July2013, y = pop_change_pct)) + 
   geom_point()
-sociod_eqi_pop_change_plot
 ```
 
 ```{r}
 built_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = built_EQI_22July2013, y = pop_change_pct)) + 
   geom_point()
-built_eqi_pop_change_plot
 ```
 
 ```{r}
@@ -213,7 +218,7 @@ histogram_pop_change
 ```
 
 # Statistical Evaluation
-## Diffeent means test
+## Differnt means test
 **null_hypothesis:** There is no difference in mean EQI for counties with positive and negative population change.
 $$H_{0}: \mu_{posPopChange} - \mu_{negPopChange} = 0$$
 **alternative hypothesis:** There is a difference in EQI for counties with positive and negative population change.
@@ -282,7 +287,7 @@ print(sd_eqi_neg_pop_change)
 
 ```{r}
 # calculate point estimate
-point_est <- as.numeric(nu_pos_pop_change - mu_neg_pop_change)
+point_est <- as.numeric(mu_eqi_pos_pop_change - mu_eqi_neg_pop_change)
 print(point_est)
 ```
 
@@ -293,7 +298,7 @@ s = standard deviation for each group
 $$SE = \sqrt{\frac{s_1^2}{n_1} + \frac{s^2_2}{n_2}}$$
 ```{r}
 # calculate standard error
-SE <- as.numeric(sqrt( (sd_pos_pop_change^2 / n_pos_pop_change) + (sd_neg_pop_change^2 / n_neg_pop_change) ))
+SE <- as.numeric(sqrt( (sd_eqi_pos_pop_change^2 / n_pos_pop_change) + (sd_eqi_neg_pop_change^2 / n_neg_pop_change) ))
 ```
 
 The definition of the z-score for hypothesis testing: 
@@ -363,32 +368,34 @@ try to find a shapefile that makes alaska and hawaii look good
 
 ```{r}
 # https://urbaninstitute.github.io/urbnmapr/
-counties_sf <- get_urbn_map("counties", sf = TRUE)
-
-counties_sf %>% 
-  ggplot(aes()) +
-  geom_sf(fill = "grey", color = "#ffffff")
-```
-```{r}
-
+# counties_sf <- get_urbn_map("counties", sf = TRUE)
+# 
+# counties_sf %>% 
+#   ggplot(aes()) +
+#   geom_sf(fill = "grey", color = "#ffffff")
 ```
 
 ```{r}
-county_laea <- county_laea %>% 
+county_map_df <- county_laea %>% 
   rename(stfips = GEOID) %>% 
-  left_join(eqi_pop)
+  right_join(eqi_pop)
 ```
 
-
+No space in blog post for maps!
 ```{r}
-county_laea %>% 
-  ggplot(aes()) +
-  geom_sf(aes(fill = EQI_22July2013))
+library(RColorBrewer)
+pal <- brewer.pal(7, "OrRd")
+
+plot(county_map_df["EQI_22July2013"],
+     main = "Environmental Quality Index by County, 2006-2010",
+     breaks = "quantile", 
+     nbreaks = 7, 
+     pal = pal)
 ```
 ```{r}
-county_laea %>% 
-  ggplot(aes()) +
-  geom_sf(aes(fill = pop_change_pct))
+# county_map_df2 %>% 
+#   ggplot(aes()) +
+#   geom_sf(aes(fill = pop_change_pct), color = "black", size = .5)
 ```
 
 
