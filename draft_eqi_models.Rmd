@@ -1,0 +1,267 @@
+---
+title: "Draft EQI Models"
+author: "Marie Rivers"
+date: "11/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(kableExtra)
+library(jtools)
+library(ggstance)
+library(huxtable)
+library(tidymodels)
+library(patchwork)
+```
+
+```{r}
+eqi_pop <- read_csv(here("data", "eqi_pop.csv")) %>%
+  filter(pop_change_pct < 100)
+```
+
+### Simple linear regression  
+
+Linear regression models were used to evaluate the relationship between environmental quality and population change using the overall EQI value and each domain specific EQI to determine if a particular domain was a stronger predictor of population change.
+
+```{r}
+eqi_model <- lm(pop_change_pct ~ EQI, data = eqi_pop)
+summary(eqi_model)
+```
+
+```{r}
+air_eqi_model <- lm(pop_change_pct ~ air_EQI, data = eqi_pop)
+water_eqi_model <- lm(pop_change_pct ~ water_EQI, data = eqi_pop)
+land_eqi_model <- lm(pop_change_pct ~ land_EQI, data = eqi_pop)
+built_eqi_model <- lm(pop_change_pct ~ built_EQI, data = eqi_pop)
+sociodemographic_eqi_model <- lm(pop_change_pct ~ sociodemographic_EQI, data = eqi_pop)
+```
+
+```{r}
+eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  geom_smooth(method = lm, formula = y~x, se = FALSE) +
+  labs(y = "% pop change")
+
+air_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = air_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  geom_smooth(method = lm, formula = y~x, se = FALSE) +
+  labs(y = "% pop change")
+
+water_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = water_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  geom_smooth(method = lm, formula = y~x, se = FALSE) +
+  labs(y = "% pop change")
+
+land_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = land_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  geom_smooth(method = lm, formula = y~x, se = FALSE) +
+  labs(y = "% pop change")
+
+built_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = built_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  geom_smooth(method = lm, formula = y~x, se = FALSE) +
+  labs(y = "% pop change")
+
+sociod_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = sociodemographic_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  geom_smooth(method = lm, formula = y~x, se = FALSE) +
+  labs(y = "% pop change")
+```
+
+```{r}
+linear_model_plots <- (eqi_lm_plot | air_eqi_lm_plot | water_eqi_lm_plot) / (land_eqi_lm_plot | built_eqi_lm_plot | sociod_eqi_lm_plot )
+
+linear_model_plots + plot_annotation(
+  title = "Simple Linear Models of EQI Domains vs. % Population Change",
+  subtitle = "US Counties, 2006-2010")
+```
+
+```{r}
+plot_summs(eqi_model, air_eqi_model, water_eqi_model, land_eqi_model, built_eqi_model, sociodemographic_eqi_model, inner_ci_level = 0.9, model.names = c("EQI", "air EQI", "water EQI", "land EQI", "built EQI", "sociodem EQI"))
+```
+
+```{r}
+export_summs(eqi_model, air_eqi_model, water_eqi_model, land_eqi_model, built_eqi_model, sociodemographic_eqi_model, 
+             digits = 3, error_format = "[{conf.low}, {conf.high}]", 
+             model.names = c("EQI", "air EQI", "water EQI", "land EQI", "built EQI", "sociodem EQI"))
+```
+
+### Linear regression with categorical variables
+
+```{r}
+eqi_cat_model <- lm(pop_change_pct ~ EQI + rucc_text, data = eqi_pop)
+summary(eqi_cat_model)
+```
+
+```{r}
+eqi_cat_plot_standalone <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct, color = rucc_text)) +
+  geom_point(size = 0.5) + 
+  geom_line(data = augment(eqi_cat_model), aes(y = .fitted, color = rucc_text)) +
+  theme(legend.position = "bottom") + 
+  labs(title = "Categorical model of EQI vs. population change based on RUCC", y = "% population change", color = "rural-urban continual category:")
+eqi_cat_plot_standalone
+```
+
+```{r}
+summ(eqi_cat_model, confint = TRUE, digits = 3)
+```
+
+```{r}
+plot_summs(eqi_cat_model, inner_ci_level = 0.9)
+```
+
+```{r}
+air_eqi_cat_model <- lm(pop_change_pct ~ air_EQI + rucc_text, data = eqi_pop)
+water_eqi_cat_model <- lm(pop_change_pct ~ water_EQI + rucc_text, data = eqi_pop)
+land_eqi_cat_model <- lm(pop_change_pct ~ land_EQI + rucc_text, data = eqi_pop)
+built_eqi_cat_model <- lm(pop_change_pct ~ built_EQI + rucc_text, data = eqi_pop)
+sociodemographic_eqi_cat_model <- lm(pop_change_pct ~ sociodemographic_EQI + rucc_text, data = eqi_pop)
+```
+
+```{r}
+eqi_cat_plot <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct)) + 
+  geom_point(aes(color = rucc_text), size = 0.5, show.legend = FALSE) + 
+  geom_line(data = augment(eqi_cat_model), aes(y = .fitted, color = rucc_text), show.legend = FALSE) +
+  labs(y = "% pop change")
+
+air_eqi_cat_plot <- ggplot(data = eqi_pop, aes(x = air_EQI, y = pop_change_pct)) + 
+  geom_point(aes(color = rucc_text), size = 0.5, show.legend = FALSE) + 
+  geom_line(data = augment(air_eqi_cat_model), aes(y = .fitted, color = rucc_text), show.legend = FALSE) +
+  labs(y = "% pop change")
+
+water_eqi_cat_plot <- ggplot(data = eqi_pop, aes(x = water_EQI, y = pop_change_pct)) + 
+  geom_point(aes(color = rucc_text), size = 0.5, show.legend = FALSE) + 
+  geom_line(data = augment(water_eqi_cat_model), aes(y = .fitted, color = rucc_text), show.legend = FALSE) +
+  labs(y = "% pop change")
+
+land_eqi_cat_plot <- ggplot(data = eqi_pop, aes(x = land_EQI, y = pop_change_pct)) + 
+  geom_point(aes(color = rucc_text), size = 0.5, show.legend = FALSE) + 
+  geom_line(data = augment(land_eqi_cat_model), aes(y = .fitted, color = rucc_text), show.legend = FALSE) +
+  labs(y = "% pop change")
+
+built_eqi_cat_plot <- ggplot(data = eqi_pop, aes(x = built_EQI, y = pop_change_pct)) + 
+  geom_point(aes(color = rucc_text), size = 0.5) + 
+  geom_line(data = augment(built_eqi_cat_model), aes(y = .fitted, color = rucc_text), show.legend = FALSE) +
+  labs(y = "% pop change", color = "RUCC:") +
+  theme(legend.position = "bottom")
+
+sociod_eqi_cat_plot <- ggplot(data = eqi_pop, aes(x = sociodemographic_EQI, y = pop_change_pct)) + 
+  geom_point(aes(color = rucc_text), size = 0.5, show.legend = FALSE) + 
+  geom_line(data = augment(sociodemographic_eqi_cat_model), aes(y = .fitted, color = rucc_text), show.legend = FALSE) +
+  labs(y = "% pop change", x = "sociodem_EQI")
+```
+
+```{r}
+cat_model_plots <- (eqi_cat_plot | air_eqi_cat_plot | water_eqi_cat_plot) / (land_eqi_cat_plot | built_eqi_cat_plot| sociod_eqi_cat_plot )
+
+cat_model_plots + plot_annotation(
+  title = "Categorical Linear Models of EQI Domains vs. % Population Change",
+  subtitle = "US Counties, 2006-2010")
+```
+
+```{r}
+plot_summs(eqi_cat_model, air_eqi_cat_model, water_eqi_cat_model, land_eqi_cat_model, built_eqi_cat_model, sociodemographic_eqi_cat_model, inner_ci_level = 0.9, model.names = c("EQI", "air EQI", "water EQI", "land EQI", "built EQI", "sociodem EQI"))
+```
+
+```{r}
+export_summs(eqi_cat_model, air_eqi_cat_model, water_eqi_cat_model, land_eqi_cat_model, built_eqi_cat_model, sociodemographic_eqi_cat_model, 
+             digits = 3, error_format = "[{conf.low}, {conf.high}]", 
+             model.names = c("EQI", "air EQI", "water EQI", "land EQI", "built EQI", "sociodem EQI"))
+```
+
+### Interaction model  
+
+Linear regression was used to explore the relationship between EQI and population change. Looking at the data, the relationship between EQI and population change may be influenced by the rural-urban continuum of each county. The interaction model used to describe this relationship is:
+
+$$\text{percent population change}_i=\beta_{0}+\beta_{1} \cdot EQI_i + \beta_{2} \cdot RUCC_i + \beta_{3} \cdot EQI_i \cdot RUCC_i + \varepsilon_i$$
+
+```{r}
+eqi_int_model <- lm(pop_change_pct ~ EQI + rucc_text + EQI:rucc_text, data = eqi_pop)
+summary(eqi_int_model)
+```
+
+```{r}
+eqi_int_model_plot_standalone <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct, color = rucc_text)) +
+  geom_point(size = 0.5) + 
+  geom_smooth(method = "lm", se = FALSE) +
+  theme(legend.position = "bottom") + 
+  labs(title = "Interaction model of EQI vs. population change based on RUCC", y = "% population change", color = "rural-urban continual category:")
+eqi_int_model_plot_standalone
+```
+
+```{r}
+summ(eqi_int_model, confint = TRUE, digits = 3)
+```
+
+```{r}
+plot_summs(eqi_int_model, inner_ci_level = 0.9)
+```
+
+Additionally, interaction models were created for each domain specific EQI to determine if a particular domain was more strongly correlated with population change.
+
+```{r}
+air_eqi_int_model <- lm(pop_change_pct ~ air_EQI + rucc_text + air_EQI:rucc_text, data = eqi_pop)
+water_eqi_int_model <- lm(pop_change_pct ~ water_EQI + rucc_text + water_EQI:rucc_text, data = eqi_pop)
+land_eqi_int_model <- lm(pop_change_pct ~ land_EQI + rucc_text + land_EQI:rucc_text, data = eqi_pop)
+built_eqi_int_model <- lm(pop_change_pct ~ built_EQI + rucc_text + built_EQI:rucc_text, data = eqi_pop)
+sociodemographic_eqi_int_model <- lm(pop_change_pct ~ sociodemographic_EQI + rucc_text + sociodemographic_EQI:rucc_text, data = eqi_pop)
+```
+
+```{r}
+plot_summs(eqi_int_model, air_eqi_int_model, water_eqi_int_model, land_eqi_int_model, built_eqi_int_model, sociodemographic_eqi_int_model, inner_ci_level = 0.9, model.names = c("EQI", "air EQI", "water EQI", "land EQI", "built EQI", "sociodem EQI"))
+```
+
+```{r}
+export_summs(eqi_int_model, air_eqi_int_model, water_eqi_int_model, land_eqi_int_model, built_eqi_int_model, sociodemographic_eqi_int_model, 
+             digits = 3, error_format = "[{conf.low}, {conf.high}]", 
+             model.names = c("EQI", "air EQI", "water EQI", "land EQI", "built EQI", "sociodem EQI"))
+```
+```{r}
+# eqi_int_model_plot_standalone <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct, color = rucc_text)) +
+#   geom_point(size = 0.5) + 
+#   geom_smooth(method = "lm", se = FALSE) +
+#   theme(legend.position = "bottom") + 
+#   labs(title = "Interaction model of EQI vs. population change based on RUCC", y = "% population change", color = "rural-urban continual category:")
+
+eqi_int_plot <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct, color = rucc_text)) + 
+  geom_point(size = 0.5, show.legend = FALSE) + 
+  geom_smooth(method = "lm", se = FALSE, show.legend = FALSE) +
+  labs(y = "% pop change")
+
+air_eqi_int_plot <- ggplot(data = eqi_pop, aes(x = air_EQI, y = pop_change_pct, color = rucc_text)) + 
+  geom_point(size = 0.5, show.legend = FALSE) +  
+  geom_smooth(method = "lm", se = FALSE, show.legend = FALSE) +
+  labs(y = "% pop change")
+
+water_eqi_int_plot <- ggplot(data = eqi_pop, aes(x = water_EQI, y = pop_change_pct, color = rucc_text)) + 
+  geom_point(size = 0.5, show.legend = FALSE) + 
+  geom_smooth(method = "lm", se = FALSE, show.legend = FALSE) +
+  labs(y = "% pop change")
+
+land_eqi_int_plot <- ggplot(data = eqi_pop, aes(x = land_EQI, y = pop_change_pct, color = rucc_text)) + 
+  geom_point(size = 0.5, show.legend = FALSE) + 
+  geom_smooth(method = "lm", se = FALSE, show.legend = FALSE) +
+  labs(y = "% pop change")
+
+built_eqi_int_plot <- ggplot(data = eqi_pop, aes(x = built_EQI, y = pop_change_pct, color = rucc_text)) + 
+  geom_point(size = 0.5) + 
+  geom_smooth(method = "lm", se = FALSE, show.legend = FALSE) +
+  labs(y = "% pop change", color = "RUCC:") +
+  theme(legend.position = "bottom")
+
+sociod_eqi_int_plot <- ggplot(data = eqi_pop, aes(x = sociodemographic_EQI, y = pop_change_pct, color = rucc_text)) + 
+  geom_point(size = 0.5, show.legend = FALSE) +  
+  geom_smooth(method = "lm", se = FALSE, show.legend = FALSE) +
+  labs(y = "% pop change", x = "sociodem_EQI")
+```
+
+```{r}
+int_model_plots <- (eqi_int_plot | air_eqi_int_plot | water_eqi_int_plot) / (land_eqi_int_plot | built_eqi_int_plot| sociod_eqi_int_plot )
+
+int_model_plots + plot_annotation(
+  title = "Interaction Models of EQI Domains vs. % Population Change",
+  subtitle = "US Counties, 2006-2010")
+```

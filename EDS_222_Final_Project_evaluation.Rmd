@@ -34,6 +34,9 @@ library(ggbeeswarm)
 library(sf)
 library(urbnmapr)
 library(tidycensus)
+library(jtools)
+library(ggstance)
+library(huxtable)
 #library(tigris)
 ```
 
@@ -56,8 +59,8 @@ eqi <- read_csv(here("data", "eqi_data", "Eqi_results_2013JULY22.csv")) %>%
   select(stfips, county_name, state, cat_rucc, EQI_22July2013, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, built_EQI_22July2013, sociod_EQI_22July2013) %>%
   mutate(county_code = str_sub(stfips, -3)) %>% 
   mutate(rucc_text = case_when(
-    cat_rucc %in% c(1, 2) ~ "metropolitan or urban",
-    cat_rucc %in% c(3, 4) ~ "less urban or thinly populated")) %>%
+    cat_rucc %in% c(1, 2) ~ "metro or urban",
+    cat_rucc %in% c(3, 4) ~ "less urban or rural")) %>%
   left_join(fips_codes, by = c("state", "county_code")) %>% 
   mutate(cat_rucc = as.factor(cat_rucc)) %>%
   select(stfips.y, state_code, county_code, state_name, state, county_name.x, county_name.y, cat_rucc, rucc_text, EQI_22July2013, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, built_EQI_22July2013, sociod_EQI_22July2013) %>%
@@ -103,8 +106,25 @@ county_pop_histogram
 ```{r}
 eqi_pop <- left_join(eqi, county_pop, by = c("stfips")) %>% 
   #relocate(c(stfips, state_code, county_code, state, state_name), .before = county_name) %>% 
-  select(-april_1_2000, -X2000, -X2001, -X2002, -X2003, -X2004, -X2005, -april_1_2010) %>%
-  filter(!X2006 == "null")
+  select(-april_1_2000, -X2000, -X2001, -X2002, -X2003, -X2004, -X2005, -X2007, -X2008, -X2009, -july_1_2010, -april_1_2010, -county_name.y, -county_name, -state_code.y, -county_code.y, -state.y, -state_name.y) %>%
+  filter(!X2006 == "null") %>%
+  rename(EQI = EQI_22July2013) %>%
+  rename(air_EQI = air_EQI_22July2013) %>%
+  rename(water_EQI = water_EQI_22July2013) %>%
+  rename(land_EQI = land_EQI_22July2013) %>%
+  rename(built_EQI = built_EQI_22July2013) %>%
+  rename(sociodemographic_EQI = sociod_EQI_22July2013) %>%
+  rename(state_code = state_code.x) %>%
+  rename(state_name = state_name.x) %>%
+  rename(state = state.x) %>%
+  rename(county_name = county_name.x) %>%
+  rename(county_code = county_code.x) %>%
+  select(-X2006)
+```
+
+```{r}
+eqi_pop_no_outlier <- eqi_pop %>%
+  filter(pop_change_pct < 100)
 ```
 
 ```{r}
@@ -114,7 +134,7 @@ write_csv(eqi_pop, here("data", "eqi_pop.csv"))
 
 # Summary Statistics and Graphs
 ```{r}
-eqi_pop_change_plot_scatter <- ggplot(data = eqi_pop, aes(x = EQI_22July2013, y = pop_change_pct)) + 
+eqi_pop_change_plot_scatter <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct)) + 
   geom_point(aes(color = pop_change_text)) +
   theme(legend.position = "bottom") +
   labs(title = "County percent population change vs. EQI, 2006-2010", x = "EQI", y = " % population change", color = "Population change:")
@@ -124,7 +144,7 @@ eqi_pop_change_plot
 ```
 
 ```{r}
-eqi_pop_rucc_scatter <- ggplot(data = eqi_pop, aes(x = EQI_22July2013, y = pop_change_pct)) + 
+eqi_pop_rucc_scatter <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct)) + 
   geom_point(aes(color = cat_rucc), size = .75) +
   theme(legend.position = "bottom") +
   labs(title = "County percent population change vs. EQI, 2006-2010", x = "EQI", y = " % population change", color = "RUCC:")
@@ -133,7 +153,7 @@ eqi_pop_rucc_plot <- ggMarginal(eqi_pop_rucc_scatter, type = "boxplot", groupCol
 eqi_pop_rucc_plot
 ```
 ```{r}
-eqi_pop_rucc_scatter2 <- ggplot(data = eqi_pop, aes(x = EQI_22July2013, y = pop_change_pct)) + 
+eqi_pop_rucc_scatter2 <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct)) + 
   geom_point(aes(color = rucc_text), size = .75) +
   theme(legend.position = "bottom") +
   labs(title = "County percent population change vs. EQI, 2006-2010", x = "EQI", y = " % population change", color = "RUCC:")
@@ -143,9 +163,24 @@ eqi_pop_rucc_plot2
 ```
 
 ```{r}
+eqi_pop_rucc_scatter2_no_outlier <- ggplot(data = eqi_pop_no_outlier, aes(x = EQI, y = pop_change_pct)) + 
+  geom_point(aes(color = rucc_text), size = .75) +
+  theme(legend.position = "bottom") +
+  labs(title = "County percent population change vs. EQI, 2006-2010", x = "EQI", y = " % population change", color = "RUCC:")
+
+eqi_pop_rucc_plot2_no_outlier <- ggMarginal(eqi_pop_rucc_scatter2_no_outlier, type = "boxplot", groupColour = TRUE)
+eqi_pop_rucc_plot2_no_outlier
+```
+
+```{r}
 county_pop_rucc_histogram <- ggplot(data = eqi_pop, aes(x = pop_change_pct)) +
   geom_histogram(aes(fill = cat_rucc), position = "dodge", bins = 50)
 county_pop_rucc_histogram
+```
+```{r}
+county_pop_rucc_histogram2 <- ggplot(data = eqi_pop, aes(x = pop_change_pct)) +
+  geom_histogram(aes(fill = rucc_text), position = "dodge", bins = 50)
+county_pop_rucc_histogram2
 ```
 
 ```{r}
@@ -163,39 +198,36 @@ pop_boxplot2 <- ggplot(data = eqi_pop, aes(x = pop_change_pct)) +
         axis.text.y = element_blank())
 pop_boxplot2
 ```
-
-
 ```{r}
-air_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = air_EQI_22July2013, y = pop_change_pct)) + 
+eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct)) + 
   geom_point()
 ```
 
 ```{r}
-water_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = water_EQI_22July2013, y = pop_change_pct)) + 
+air_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = air_EQI, y = pop_change_pct)) + 
   geom_point()
 ```
 
 ```{r}
-land_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = land_EQI_22July2013, y = pop_change_pct)) + 
+water_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = water_EQI, y = pop_change_pct)) + 
   geom_point()
 ```
 
 ```{r}
-sociod_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = sociod_EQI_22July2013, y = pop_change_pct)) + 
+land_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = land_EQI, y = pop_change_pct)) + 
   geom_point()
 ```
 
 ```{r}
-built_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = built_EQI_22July2013, y = pop_change_pct)) + 
+sociod_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = sociod_EQI, y = pop_change_pct)) + 
   geom_point()
 ```
 
 ```{r}
-# all_eqi_plot <- eqi_pop_change_plot / (air_eqi_pop_change_plot + water_eqi_pop_change_plot + land_eqi_pop_change_plot + sociod_eqi_pop_change_plot + built_eqi_pop_change_plot)
-
-all_eqi_plot <- ((eqi_pop_change_plot + plot_layout(widths = 2, heights = 2)) + (land_eqi_pop_change_plot / built_eqi_pop_change_plot) + plot_layout(widths = 1, heights = 1)) / (air_eqi_pop_change_plot + water_eqi_pop_change_plot + land_eqi_pop_change_plot + plot_layout(widths = 1, heights = 1))
-all_eqi_plot
+built_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = built_EQI, y = pop_change_pct)) + 
+  geom_point()
 ```
+
 ```{r}
 p1 <- land_eqi_pop_change_plot / built_eqi_pop_change_plot
 p2 <- (air_eqi_pop_change_plot | water_eqi_pop_change_plot | land_eqi_pop_change_plot) + plot_layout(widths = 1)
@@ -204,18 +236,80 @@ row1 <- (eqi_pop_change_plot | p1) + plot_layout(widths = c(2, 1))
 all_eqi_plot <- (row1 / p2) + plot_layout(heights = c(3, 1))
 all_eqi_plot
 ```
+Patchwork with no outlier
 ```{r}
-histogram <- ggplot(data = eqi_pop, aes(x = EQI_22July2013)) +
+eqi_pop_change_plot_no_outlier <- ggplot(data = eqi_pop_no_outlier, aes(x = EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  labs(y = "% pop change") + 
+  theme(axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+air_eqi_pop_change_plot_no_outlier <- ggplot(data = eqi_pop_no_outlier, aes(x = air_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  labs(y = "% pop change") + 
+  theme(axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+water_eqi_pop_change_plot_no_outlier <- ggplot(data = eqi_pop_no_outlier, aes(x = water_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  labs(y = "% pop change") + 
+  theme(axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+land_eqi_pop_change_plot_no_outlier <- ggplot(data = eqi_pop_no_outlier, aes(x = land_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  labs(y = "% pop change") + 
+  theme(axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+sociod_eqi_pop_change_plot_no_outlier <- ggplot(data = eqi_pop_no_outlier, aes(x = sociodemographic_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  labs(y = "% pop change") + 
+  theme(axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+built_eqi_pop_change_plot_no_outlier <- ggplot(data = eqi_pop_no_outlier, aes(x = built_EQI, y = pop_change_pct)) + 
+  geom_point() + 
+  labs(y = "% pop change") + 
+  theme(axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+```
+
+```{r}
+p1_no_outlier <- land_eqi_pop_change_plot_no_outlier / built_eqi_pop_change_plot_no_outlier
+p2_no_outlier <- (air_eqi_pop_change_plot_no_outlier | water_eqi_pop_change_plot_no_outlier | sociod_eqi_pop_change_plot_no_outlier) + plot_layout(widths = 1)
+row1_no_outlier <- (eqi_pop_change_plot_no_outlier | p1_no_outlier) + plot_layout(widths = c(2, 1))
+
+all_eqi_plot_no_outlier <- (row1_no_outlier / p2_no_outlier) + plot_layout(heights = c(3, 1))
+all_eqi_plot_no_outlier
+```
+
+```{r}
+histogram <- ggplot(data = eqi_pop, aes(x = EQI)) +
   geom_histogram(bins = 100)
 histogram
 ```
 
 ```{r}
-histogram_pop_change <- ggplot(data = eqi_pop, aes(x = EQI_22July2013)) +
+histogram_pop_change <- ggplot(data = eqi_pop, aes(x = EQI)) +
   geom_histogram(aes(fill = pop_change_text), position = "dodge", bins = 50) +
   labs(title = "Historgram of EQI based on county population change, 2006-2010", x = "EQI", fill = "Population change")
 histogram_pop_change
 ```
+
+```{r}
+histogram_eqi_rucc <- ggplot(data = eqi_pop, aes(x = EQI)) +
+  geom_histogram(aes(fill = rucc_text), position = "dodge", bins = 50) +
+  labs(title = "Historgram of EQI based on RUCC", x = "EQI", fill = "RUCC")
+histogram_eqi_rucc
+```
+
+```{r}
+bin_scatter <-ggplot(data=eqi_pop, aes(x=EQI, y = pop_change_pct)) + 
+  geom_bin2d(bins=50) + theme_bw() + geom_hline(yintercept=0, color="red")
+bin_scatter
+```
+
 
 # Statistical Evaluation
 ## Differnt means test
@@ -229,18 +323,18 @@ The standard error for a difference in means is defined as: $SE = \sqrt{\frac{s_
 ```{r}
 eqi_summary_table <- eqi_pop %>%
   group_by(pop_change_text) %>%
-  summarise(min_eqi = round(min(EQI_22July2013, na.rm = TRUE),2),
-            max_eqi = round(max(EQI_22July2013, na.rm = TRUE),2),
-            mean_eqi = round(mean(EQI_22July2013, na.rm = TRUE),2),
-            sd_eqi = round(sd(EQI_22July2013, na.rm = TRUE), 2),
-            var_eqi = round(var(EQI_22July2013, na.rm = TRUE), 2),
+  summarise(min_eqi = round(min(EQI),2),
+            max_eqi = round(max(EQI),2),
+            mean_eqi = round(mean(EQI),2),
+            sd_eqi = round(sd(EQI), 2),
+            var_eqi = round(var(EQI), 2),
             count = n()) %>%
   bind_rows(., eqi_pop %>%
-              summarise(min_eqi = round(min(EQI_22July2013, na.rm = TRUE),2),
-                        max_eqi = round(max(EQI_22July2013, na.rm = TRUE),2),
-                        mean_eqi = round(mean(EQI_22July2013, na.rm = TRUE),2),
-                        sd_eqi = round(sd(EQI_22July2013, na.rm = TRUE), 2),
-                        var_eqi = round(var(EQI_22July2013, na.rm = TRUE), 2),
+              summarise(min_eqi = round(min(EQI),2),
+                        max_eqi = round(max(EQI),2),
+                        mean_eqi = round(mean(EQI),2),
+                        sd_eqi = round(sd(EQI), 2),
+                        var_eqi = round(var(EQI), 2),
                         count = n()) %>%
               mutate(pop_change_text = "all counties")
             ) %>%
@@ -256,20 +350,20 @@ eqi_summary_table
 # mean values
 mu_eqi_pos_pop_change <- eqi_pop %>% 
   filter(pop_change_pct > 0) %>% 
-  summarise(mean_eqi = mean(EQI_22July2013, na.rm = TRUE))
+  summarise(mean_eqi = mean(EQI))
 
 mu_eqi_neg_pop_change <- eqi_pop %>% 
   filter(pop_change_pct <= 0) %>% 
-  summarise(mean_eqi = mean(EQI_22July2013, na.rm = TRUE))
+  summarise(mean_eqi = mean(EQI))
 
 # standard deviations  
 sd_eqi_pos_pop_change <- eqi_pop %>% 
   filter(pop_change_pct > 0) %>% 
-  summarise(sd_eqi = sd(EQI_22July2013, na.rm = TRUE))
+  summarise(sd_eqi = sd(EQI))
 
 sd_eqi_neg_pop_change <- eqi_pop %>% 
   filter(pop_change_pct <= 0) %>% 
-  summarise(sd_eqi = sd(EQI_22July2013, na.rm = TRUE))
+  summarise(sd_eqi = sd(EQI))
 
 # count of observations 
 n_pos_pop_change <- eqi_pop %>% 
@@ -315,44 +409,7 @@ p_val = 2 * pnorm(point_est, mean = 0, sd = SE, lower.tail=FALSE)
 print(p_val)
 ```
 
-xxx...Since $p-value = 0.018 < 0.05$ we reject the null that there is no difference in the birth weight of babies born to smoking versus non-smoking mothers. We can say there is a statistically significant difference (at the 5% significance level) in baby birth weight across smoking and non-smoking mothers.
-
-# Using `t.test()` to implement a hypothesis test in `R`
-
-Let's repeat the above steps using the canned function in `R` that
-allows you to perform hypothesis tests for comparing one or two means.
-
-Again, we want to know if there is a statistically significant
-difference in baby birth weight across smoking and non-smoking mothers.
-
-First, take a look at `t.test()` documentation to see how the function
-works.
-
-```{r}
-?t.test
-```
-
-"Performs one and two sample t-tests on vectors of data" = Performs t
-tests on 1 mean and 2 means
-
-We can implement our t-test in multiple ways using `t.test()`. First,
-let's use the `formula` object, as I think this is the nicest approach.
-To use this method, we first enter the variable we are interested in
-evaluating means of (i.e., `weight`), then use a tilde `~` like in
-regression analysis, followed by the variable indicating the groups for
-which we are testing for differences in means (`habit`).
-
-```{r}
-t.test(weight ~ habit, data = ncbirths_complete_habit)
-```
-
-Note that we obtain nearly the same p-value and test-statistic (shown as
-`t`) as we did above, although it's slightly different as this is using
-the t-distribution and we used the normal.[^2]
-
-[^2]: By the time $n=1000$, the t-distribution and normal are very very
-    similar.
-
+Since $p-value = 0.018 < 0.05$ we reject the null that there is no difference in the EQI of counties with positive population change versus negative population change. There is a statistically significant difference (at the 5% significance level) in EQI across the two population change groups.
 
 
 # Linear Model
@@ -386,7 +443,7 @@ No space in blog post for maps!
 library(RColorBrewer)
 pal <- brewer.pal(7, "OrRd")
 
-plot(county_map_df["EQI_22July2013"],
+plot(county_map_df["EQI"],
      main = "Environmental Quality Index by County, 2006-2010",
      breaks = "quantile", 
      nbreaks = 7, 
@@ -396,6 +453,38 @@ plot(county_map_df["EQI_22July2013"],
 # county_map_df2 %>% 
 #   ggplot(aes()) +
 #   geom_sf(aes(fill = pop_change_pct), color = "black", size = .5)
+```
+
+## Relationship between domain specific EQI and population change  
+
+Linear regression models were created for each domain specific EQI to determine if a particular domain was more strongly correlated with population change.
+
+```{r}
+eqi_model <- lm(pop_change_pct ~ EQI, data = eqi_pop)
+summary(eqi_model)
+```
+
+```{r}
+eqi_rucc_model <- lm(pop_change_pct ~ EQI + rucc_text, data = eqi_pop)
+summary(eqi_rucc_model)
+```
+
+```{r}
+air_eqi_model <- lm(pop_change_pct ~ air_EQI, data = eqi_pop)
+water_eqi_model <- lm(pop_change_pct ~ water_EQI, data = eqi_pop)
+land_eqi_model <- lm(pop_change_pct ~ land_EQI, data = eqi_pop)
+built_eqi_model <- lm(pop_change_pct ~ built_EQI, data = eqi_pop)
+sociodemographic_eqi_model <- lm(pop_change_pct ~ sociodemographic_EQI, data = eqi_pop)
+```
+
+```{r}
+plot_summs(eqi_model, air_eqi_model, water_eqi_model, land_eqi_model, built_eqi_model, sociodemographic_eqi_model, inner_ci_level = 0.9, model.names = c("EQI", "air EQI", "water EQI", "land EQI", "built EQI", "sociodem EQI"))
+```
+
+```{r}
+export_summs(eqi_model, air_eqi_model, water_eqi_model, land_eqi_model, built_eqi_model, sociodemographic_eqi_model, 
+             digits = 3, error_format = "[{conf.low}, {conf.high}]", 
+             model.names = c("EQI", "air EQI", "water EQI", "land EQI", "built EQI", "sociodem EQI"))
 ```
 
 
