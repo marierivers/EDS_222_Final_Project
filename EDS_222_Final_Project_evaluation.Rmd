@@ -59,8 +59,8 @@ eqi <- read_csv(here("data", "eqi_data", "Eqi_results_2013JULY22.csv")) %>%
   select(stfips, county_name, state, cat_rucc, EQI_22July2013, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, built_EQI_22July2013, sociod_EQI_22July2013) %>%
   mutate(county_code = str_sub(stfips, -3)) %>% 
   mutate(rucc_text = case_when(
-    cat_rucc %in% c(1, 2) ~ "metro or urban",
-    cat_rucc %in% c(3, 4) ~ "less urban or rural")) %>%
+    cat_rucc %in% c(1, 2) ~ "urban",
+    cat_rucc %in% c(3, 4) ~ "rural")) %>%
   left_join(fips_codes, by = c("state", "county_code")) %>% 
   mutate(cat_rucc = as.factor(cat_rucc)) %>%
   select(stfips.y, state_code, county_code, state_name, state, county_name.x, county_name.y, cat_rucc, rucc_text, EQI_22July2013, air_EQI_22July2013, water_EQI_22July2013, land_EQI_22July2013, built_EQI_22July2013, sociod_EQI_22July2013) %>%
@@ -128,7 +128,6 @@ eqi_pop_no_outlier <- eqi_pop %>%
 ```
 
 ```{r}
-# xxx
 write_csv(eqi_pop, here("data", "eqi_pop.csv"))
 ```
 
@@ -200,40 +199,37 @@ pop_boxplot2
 ```
 ```{r}
 eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct)) + 
-  geom_point()
-```
+  geom_point() +
+  theme(axis.title.y = element_blank())
 
-```{r}
 air_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = air_EQI, y = pop_change_pct)) + 
-  geom_point()
-```
+  geom_point()+
+  theme(axis.title.y = element_blank())
 
-```{r}
 water_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = water_EQI, y = pop_change_pct)) + 
-  geom_point()
-```
+  geom_point() +
+  theme(axis.title.y = element_blank())
 
-```{r}
 land_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = land_EQI, y = pop_change_pct)) + 
-  geom_point()
-```
+  geom_point()  +
+  theme(axis.title.y = element_blank())
 
-```{r}
-sociod_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = sociod_EQI, y = pop_change_pct)) + 
-  geom_point()
-```
-
-```{r}
 built_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = built_EQI, y = pop_change_pct)) + 
-  geom_point()
+  geom_point() +
+  theme(axis.title.y = element_blank())
+
+sociod_eqi_pop_change_plot <- ggplot(data = eqi_pop, aes(x = sociodemographic_EQI, y = pop_change_pct)) + 
+  geom_point() +
+  labs(x = "social_EQI") +
+  theme(axis.title.y = element_blank())
 ```
 
-```{r}
+```{r fig1, fig.height = 4, fig.width = 4}
 p1 <- land_eqi_pop_change_plot / built_eqi_pop_change_plot
-p2 <- (air_eqi_pop_change_plot | water_eqi_pop_change_plot | land_eqi_pop_change_plot) + plot_layout(widths = 1)
-row1 <- (eqi_pop_change_plot | p1) + plot_layout(widths = c(2, 1))
+row1 <- (eqi_pop_change_plot | p1) + plot_layout(ncol = 2, widths = c(2, 1))
+row2 <- (air_eqi_pop_change_plot | water_eqi_pop_change_plot | sociod_eqi_pop_change_plot) + plot_layout(ncol = 3, widths = c(1, 1, 1))
 
-all_eqi_plot <- (row1 / p2) + plot_layout(heights = c(3, 1))
+all_eqi_plot <- (row1 / row2) + plot_layout(ncol = 1, heights = c(2, 1))
 all_eqi_plot
 ```
 Patchwork with no outlier
