@@ -41,32 +41,32 @@ sociodemographic_eqi_model <- lm(pop_change_pct ~ sociodemographic_EQI, data = e
 
 ```{r}
 eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = EQI, y = pop_change_pct)) + 
-  geom_point() + 
+  geom_point(size = 0.5) + 
   geom_smooth(method = lm, formula = y~x, se = FALSE) +
   labs(y = "% pop change")
 
 air_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = air_EQI, y = pop_change_pct)) + 
-  geom_point() + 
+  geom_point(size = 0.5) + 
   geom_smooth(method = lm, formula = y~x, se = FALSE) +
   labs(y = "% pop change")
 
 water_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = water_EQI, y = pop_change_pct)) + 
-  geom_point() + 
+  geom_point(size = 0.5) + 
   geom_smooth(method = lm, formula = y~x, se = FALSE) +
   labs(y = "% pop change")
 
 land_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = land_EQI, y = pop_change_pct)) + 
-  geom_point() + 
+  geom_point(size = 0.5) + 
   geom_smooth(method = lm, formula = y~x, se = FALSE) +
   labs(y = "% pop change")
 
 built_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = built_EQI, y = pop_change_pct)) + 
-  geom_point() + 
+  geom_point(size = 0.5) + 
   geom_smooth(method = lm, formula = y~x, se = FALSE) +
   labs(y = "% pop change")
 
 sociod_eqi_lm_plot <- ggplot(data = eqi_pop, aes(x = sociodemographic_EQI, y = pop_change_pct)) + 
-  geom_point() + 
+  geom_point(size = 0.5) + 
   geom_smooth(method = lm, formula = y~x, se = FALSE) +
   labs(y = "% pop change")
 ```
