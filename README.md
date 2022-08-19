@@ -6,7 +6,7 @@ This analysis was completed as my final project for a Statistics for Environment
 For the project requirements, the professor was more interested in our analysis than the code used to clean the data and calculate statistics. A blog post prepared for the assignment can be found on my website
 https://marierivers.github.io/posts/environmental-quality-population-change/. 
 
-This repository contains code used read in and clean all data file and for the statistical analysis/discussion. 
+This file `eqi_pop_change_analysis.Rmd` in this repository contains code used read in and clean all data files and for the statistical analysis/discussion. 
 
 ## References
 
